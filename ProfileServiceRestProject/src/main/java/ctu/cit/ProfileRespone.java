@@ -25,7 +25,7 @@ import javax.json.JsonValue;
 @Path("/profiles")
 public class ProfileRespone {
 
-    private UserResponsitory repository = new UserResponsitory();
+    private ProfileResponsitory repository = new ProfileResponsitory();
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -39,22 +39,23 @@ public class ProfileRespone {
             return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
         }
 
-        String userEmail = extractEmailFromToken(token);
-
-        User user = repository.getUserByEmail(userEmail);
-
-        if (user == null) {
+        int profileId = extractProfileIdFromToken(token);
+        if (profileId <= 0) {
             JsonObject jsonError = Json.createObjectBuilder()
-                    .add("error", "User not found")
-                    .add("message", "User with the provided email does not exist."+userEmail)
-                    .build();
+                .add("error", "Invalid token: No profile ID found")
+                .build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
+        }
+
+        Profile existingProfile = repository.getProfileById(profileId);
+        if (existingProfile == null) {
+            JsonObject jsonError = Json.createObjectBuilder()
+                .add("error", "Profile not found for ID: " + profileId)
+                .build();
             return Response.status(Response.Status.NOT_FOUND).entity(jsonError).build();
         }
 
-
-        Profile profile = repository.getProfileByUserId(user.getId());
-
-        if (profile == null) {
+        if (existingProfile == null) {
             JsonObject jsonError = Json.createObjectBuilder()
                 .add("error", "Profile not found")
                 .build();
@@ -62,20 +63,21 @@ public class ProfileRespone {
         }
 
         JsonObject data = Json.createObjectBuilder()
-                .add("id", profile.getId())
-                .add("title", profile.getTitle() != null ? profile.getTitle() : "")
-                .add("name", profile.getName() != null ? profile.getName() : "")
-                .add("phone", profile.getPhone() != null ? profile.getPhone() : "")
-                .add("image_url", profile.getImage() != null ? profile.getImage() : "")
-                .add("gender", profile.getImage() != null ? profile.getGender() : false)
-                .add("location", profile.getLocation() != null ? profile.getLocation() : "")
-                .add("website", profile.getWebsite() != null ? profile.getWebsite(): "")
-                .add("birthday", profile.getBirthday() != null ? profile.getBirthday() : "")
+                .add("id", existingProfile.getId())
+                .add("title", existingProfile.getTitle() != null ? existingProfile.getTitle() : "")
+                .add("name", existingProfile.getName() != null ? existingProfile.getName() : "")
+                .add("phone", existingProfile.getPhone() != null ? existingProfile.getPhone() : "")
+                .add("email", existingProfile.getEmail() != null ? existingProfile.getEmail() : "")
 
+                .add("image_url", existingProfile.getImage() != null ? existingProfile.getImage() : "")
+                .add("gender", existingProfile.getGender() ? "Female" : "Male") // Chuyển đổi giới tính thành chuỗi Female hoặc Male
+                .add("location", existingProfile.getLocation() != null ? existingProfile.getLocation() : "")
+                .add("website", existingProfile.getWebsite() != null ? existingProfile.getWebsite(): "")
+                .add("birthday", existingProfile.getBirthday() != null ? existingProfile.getBirthday() : "")
                 .build();
         JsonObject jsonResponse = Json.createObjectBuilder()
-        		.add("success", true)
-        		.add("message", true)
+                .add("success", true)
+                .add("message", true)
                 .add("data", data)
                 .add("status_code", 200)
                 .add("message", "success")
@@ -131,53 +133,44 @@ public class ProfileRespone {
         return null;
     }
 
-    
- // Phương thức POST để cập nhật thông tin profile
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     public Response updateProfile(@Context HttpHeaders headers, Profile updatedProfile) {
-        // Lấy token từ header
         String token = headers.getHeaderString("Authorization");
 
-        // Kiểm tra xem token có tồn tại không
         if (token == null || token.isEmpty()) {
             JsonObject jsonError = Json.createObjectBuilder()
                 .add("error", "Token is missing")
                 .build();
             return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
         }
-
-        // Lấy email của người dùng từ token
-        String email = extractEmailFromToken(token);
-
-        // Kiểm tra xem email có hợp lệ không
-        if (email == null) {
+        
+        int profileId = extractProfileIdFromToken(token);
+        if (profileId <= 0) {
             JsonObject jsonError = Json.createObjectBuilder()
-                .add("error", "Invalid token")
+                .add("error", "Invalid token: No profile ID found")
                 .build();
-            return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
         }
 
-        // Kiểm tra xem profile có tồn tại không
-        Profile existingProfile = repository.getProfileByEmail(email);
-
+        Profile existingProfile = repository.getProfileById(profileId);
         if (existingProfile == null) {
             JsonObject jsonError = Json.createObjectBuilder()
-                .add("error", "Profile not found for email: " + email)
+                .add("error", "Profile not found for ID: " + profileId)
                 .build();
             return Response.status(Response.Status.NOT_FOUND).entity(jsonError).build();
         }
 
-        // Cập nhật thông tin profile
-        if (updatedProfile.getName() != null) {
-            existingProfile.setName(updatedProfile.getName());
-        }
-        if (updatedProfile.getTitle() != null) {
-            existingProfile.setTitle(updatedProfile.getTitle());
-        }
-        // Handle other fields similarly
+        existingProfile.setName(updatedProfile.getName());
+        existingProfile.setTitle(updatedProfile.getTitle());
+        existingProfile.setPhone(updatedProfile.getPhone());
+        existingProfile.setEmail(updatedProfile.getEmail());
+        existingProfile.setImage(updatedProfile.getImage());
+        existingProfile.setGender(updatedProfile.getGender());
+        existingProfile.setLocation(updatedProfile.getLocation());
+        existingProfile.setWebsite(updatedProfile.getWebsite());
+        existingProfile.setBirthday(updatedProfile.getBirthday());
 
-        // Lưu profile được cập nhật vào cơ sở dữ liệu
         repository.updateProfile(existingProfile);
 
         JsonObject jsonResponse = Json.createObjectBuilder()
@@ -188,16 +181,34 @@ public class ProfileRespone {
                         .add("title", existingProfile.getTitle())
                         .add("phone", existingProfile.getPhone())
                         .add("email", existingProfile.getEmail())
-                        .add("gender", existingProfile.getGender()))
-                		.add("location", existingProfile.getLocation())
-                		.add("website", existingProfile.getWebsite())
-                		.add("birthday", existingProfile.getBirthday())
+                        .add("gender", existingProfile.getGender())
+                        .add("location", existingProfile.getLocation())
+                        .add("website", existingProfile.getWebsite())
+                        .add("birthday", existingProfile.getBirthday()))
                 .build();
 
         return Response.ok().entity(jsonResponse).build();
     }
-
-
+    
+    
+    
+    private int extractProfileIdFromToken(String token) {
+        if (token != null && token.startsWith("Bearer ")) {
+            String tokenString = token.substring(7).trim();
+            try {
+                Jws<Claims> claims = Jwts.parser().setSigningKey("your-secret-key").parseClaimsJws(tokenString);
+                String subject = claims.getBody().getSubject();
+                String[] parts = subject.split("_");
+                return Integer.parseInt(parts[0]); // First part is the profile ID
+            } catch (JwtException e) {
+                e.printStackTrace();
+                return 0;
+            }
+        }
+        return 0;
+    }
+    
+    
     
     
 }

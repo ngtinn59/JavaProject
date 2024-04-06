@@ -1,10 +1,5 @@
 package ctu.cit;
 
-
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-
 import java.util.List;
 
 import javax.json.Json;
@@ -14,7 +9,9 @@ import javax.json.JsonValue;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
@@ -29,346 +26,398 @@ import io.jsonwebtoken.Jwts;
 
 @Path("/aboutme")
 public class AboutmeRespone {
-  private AboutmeRepository repository = new AboutmeRepository();
-  
 
-  @GET
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response getAllProjectsByToken(@Context HttpHeaders headers) {
-      // Retrieve the token from the Authorization header
-      String token = headers.getHeaderString("Authorization");
+    private AboutmeRepository repository = new AboutmeRepository();
 
-      // Check if the token is present and valid
-      if (token == null || !isValidToken(token)) {
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Unauthorized access")
-                  .build();
-          return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
-      }
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllAboutmeByToken(@Context HttpHeaders headers) {
+        String token = headers.getHeaderString("Authorization");
 
-      int profileId = 0;
-      try {
-          profileId = Integer.parseInt(extractIdFromToken(token));
-      } catch (NumberFormatException e) {
-          // Handle the exception, maybe log it and/or set a default value
-          System.out.println("Error parsing profileId: " + e.getMessage());
-          // Depending on your application logic, you might want to throw an exception or handle this case accordingly.
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Invalid profile ID format in token")
-                  .build();
-          return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
-      }
+        if (token == null || !isValidToken(token)) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Unauthorized access")
+                                         .build())
+                           .build();
+        }
 
-      // Fetch the projects for the profile ID extracted from the token
-      List<Aboutme> projects = repository.getAllAboutmeByProfileId(profileId);
+        int profileId = extractIdFromToken(token);
+        if (profileId <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Invalid token: No profile ID found")
+                                         .build())
+                           .build();
+        }
 
-      // Convert the list of projects to a JSON array
-      JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
-      for (Aboutme project : projects) {
-          JsonObject projectJson = Json.createObjectBuilder()
-                  .add("id", project.getId())
-                  .add("degree", project.getDescription())
-                  .build();
-          jsonArrayBuilder.add(projectJson);
-      }
+        JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+        repository.getAllAboutmeByProfileId(profileId)
+                  .forEach(aboutme -> jsonArrayBuilder.add(Json.createObjectBuilder()
+                                                           .add("id", aboutme.getId())
+                                                           .add("description", aboutme.getDescription())));
+        
+        JsonObject jsonResponse = Json.createObjectBuilder()
+                                       .add("success", true)
+                                       .add("data", jsonArrayBuilder.build())
+                                       .build();
 
-      // Create the final JSON response object
-      JsonObject jsonResponse = Json.createObjectBuilder()
-              .add("success", true)
-              .add("data", jsonArrayBuilder.build())
-              .build();
-
-      // Return the response with the list of projects
-      return Response.ok(jsonResponse).build();
-  }
-  @POST
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response createEducation(@Context HttpHeaders headers, Aboutme newAboutme) {
-    String token = headers.getHeaderString("Authorization");
-
-    if (token == null || !isValidToken(token)) {
-      JsonObject jsonError = Json.createObjectBuilder()
-          .add("error", "Unauthorized access")
-          .build();
-      return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
+        return Response.ok(jsonResponse).build();
     }
 
-    int profileId = 0;
-    try {
-        profileId = Integer.parseInt(extractIdFromToken(token));
-    } catch (NumberFormatException e) {
-        // Handle the exception, maybe log it and/or set a default value
-        System.out.println("Error parsing profileId: " + e.getMessage());
-        // Depending on your application logic, you might want to throw an exception or handle this case accordingly.
-    }   
-    
-    if (profileId <= 0) {
-      JsonObject jsonError = Json.createObjectBuilder()
-          .add("error", "Invalid token: No profile ID found")
-          .build();
-      return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
-    }
-
-//    if (!validateProject(newProject)) {
-//      JsonObject jsonError = Json.createObjectBuilder()
-//          .add("error", "Invalid project data")
-//          .build();
-//      return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
+//    @POST
+//    @Consumes(MediaType.APPLICATION_JSON)
+//    public Response createOrUpdateAboutme(@Context HttpHeaders headers, Aboutme newAboutme) {
+//        String token = headers.getHeaderString("Authorization");
+//
+//        if (token == null || !isValidToken(token)) {
+//            return Response.status(Response.Status.UNAUTHORIZED)
+//                           .entity(Json.createObjectBuilder()
+//                                         .add("error", "Unauthorized access")
+//                                         .build())
+//                           .build();
+//        }
+//
+//        int profileId = extractIdFromToken(token);
+//        if (profileId <= 0) {
+//            return Response.status(Response.Status.BAD_REQUEST)
+//                           .entity(Json.createObjectBuilder()
+//                                         .add("error", "Invalid token: No profile ID found")
+//                                         .build())
+//                           .build();
+//        }
+//
+//        // Kiểm tra xem có dữ liệu Aboutme đã tồn tại không
+//        List<Aboutme> aboutmes = repository.getAboutmeByprofileId(profileId);
+//        if (!aboutmes.isEmpty()) {
+//            Aboutme existingAboutme = aboutmes.get(0);
+//            // Nếu có, cập nhật dữ liệu
+//            existingAboutme.setDescription(newAboutme.getDescription());
+//            boolean success = repository.updateAboutme(existingAboutme, profileId); // Update the Aboutme
+//            if (success) {
+//                JsonObject projectJson = Json.createObjectBuilder()
+//                                            .add("description", existingAboutme.getDescription())
+//                                            .add("profiles_id", profileId)
+//                                            .add("id", existingAboutme.getId())
+//                                            .build();
+//
+//                JsonObject jsonResponse = Json.createObjectBuilder()
+//                                               .add("success", true)
+//                                               .add("message", "Aboutme updated successfully")
+//                                               .add("aboutme", projectJson)
+//                                               .build();
+//
+//                return Response.ok(jsonResponse).build();
+//            } else {
+//                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+//                               .entity(Json.createObjectBuilder()
+//                                             .add("error", "Failed to update the Aboutme")
+//                                             .build())
+//                               .build();
+//            }
+//        } else {
+//            // Nếu không, tạo mới dữ liệu
+//            Aboutme createdAboutme = repository.insertAboutme(newAboutme, profileId);
+//            if (createdAboutme == null) {
+//                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+//                               .entity(Json.createObjectBuilder()
+//                                             .add("error", "Failed to create a new Aboutme")
+//                                             .build())
+//                               .build();
+//            }
+//
+//            JsonObject projectJson = Json.createObjectBuilder()
+//                                        .add("description", createdAboutme.getDescription())
+//                                        .add("profiles_id", profileId)
+//                                        .add("id", createdAboutme.getId())
+//                                        .build();
+//
+//            JsonObject jsonResponse = Json.createObjectBuilder()
+//                                           .add("success", true)
+//                                           .add("message", "Aboutme created successfully")
+//                                           .add("aboutme", projectJson)
+//                                           .build();
+//
+//            return Response.status(Response.Status.CREATED).entity(jsonResponse).build();
+//        }
 //    }
 
-    Aboutme createdAboutme = repository.insertAboutme(newAboutme, profileId);
-    if (createdAboutme == null) {
-      JsonObject jsonError = Json.createObjectBuilder()
-          .add("error", "Failed to create a new project"+profileId)
-          .build();
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonError).build();
+
+
+    @GET
+    @Path("{aboutmeId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAboutmeById(@Context HttpHeaders headers, @PathParam("aboutmeId") int aboutmeId) {
+        String token = headers.getHeaderString("Authorization");
+
+        if (token == null || !isValidToken(token)) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Unauthorized access")
+                                         .build())
+                           .build();
+        }
+
+        int profileId = extractIdFromToken(token);
+        if (profileId <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Invalid token: No profile ID found")
+                                         .build())
+                           .build();
+        }
+
+        Aboutme aboutme = repository.getAboutmeById(aboutmeId, profileId);
+        if (aboutme == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Aboutme with ID " + aboutmeId + " not found")
+                                         .build())
+                           .build();
+        }
+
+        JsonObject aboutmeJson = Json.createObjectBuilder()
+                                      .add("id", aboutme.getId())
+                                      .add("description", aboutme.getDescription())
+                                      .build();
+
+        JsonObject jsonResponse = Json.createObjectBuilder()
+                                       .add("success", true)
+                                       .add("data", aboutmeJson)
+                                       .build();
+
+        return Response.ok(jsonResponse).build();
     }
 
-    JsonObject projectJson = Json.createObjectBuilder()
-        .add("description", createdAboutme.getDescription())
-        .add("profiles_id", profileId)
-        .add("id", createdAboutme.getId())
-        
-        .build();
+//    @PUT
+//    @Path("{aboutmeId}")
+//    @Consumes(MediaType.APPLICATION_JSON)
+//    @Produces(MediaType.APPLICATION_JSON)
+//    public Response updateAboutme(@Context HttpHeaders headers, @PathParam("aboutmeId") int aboutmeId, Aboutme updatedAboutme) {
+//        String token = headers.getHeaderString("Authorization");
+//
+//        if (token == null || !isValidToken(token)) {
+//            return Response.status(Response.Status.UNAUTHORIZED)
+//                           .entity(Json.createObjectBuilder()
+//                                         .add("error", "Unauthorized access")
+//                                         .build())
+//                           .build();
+//        }
+//
+//        int profileId = extractIdFromToken(token);
+//        if (profileId <= 0) {
+//            return Response.status(Response.Status.BAD_REQUEST)
+//                           .entity(Json.createObjectBuilder()
+//                                         .add("error", "Invalid token: No profile ID found")
+//                                         .build())
+//                           .build();
+//        }
+//
+//        Aboutme existingAboutme = repository.getAboutmeById(aboutmeId, profileId);
+//        if (existingAboutme == null) {
+//            return Response.status(Response.Status.NOT_FOUND)
+//                           .entity(Json.createObjectBuilder()
+//                                         .add("error", "Aboutme with ID " + aboutmeId + " not found")
+//                                         .build())
+//                           .build();
+//        }
+//
+//        existingAboutme.setDescription(updatedAboutme.getDescription());
+//
+//        boolean success = repository.updateAboutme(existingAboutme, profileId);
+//        if (success) {
+//            return Response.ok(Json.createObjectBuilder()
+//                                  .add("success", true)
+//                                  .add("message", "Aboutme updated successfully")
+//                                  .build())
+//                           .build();
+//        } else {
+//            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+//                           .entity(Json.createObjectBuilder()
+//                                         .add("error", "Failed to update the Aboutme")
+//                                         .build())
+//                           .build();
+//        }
+//    }
+    
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response createAboutme(@Context HttpHeaders headers, Aboutme newAboutme) {
+        String token = headers.getHeaderString("Authorization");
 
-    JsonObject jsonResponse = Json.createObjectBuilder()
-        .add("success", true)
-        .add("message", "Project created successfully")
-        .add("project", projectJson)
-        .build();
+        if (token == null || !isValidToken(token)) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Unauthorized access")
+                                         .build())
+                           .build();
+        }
 
-    return Response.status(Response.Status.CREATED).entity(jsonResponse).build();
-  }
+        int profileId = extractIdFromToken(token);
+        if (profileId <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Invalid token: No profile ID found")
+                                         .build())
+                           .build();
+        }
 
-  @GET
-  @Path("{aboutmeId}")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response getProjectById(@Context HttpHeaders headers, @PathParam("aboutmeId") int aboutmeId) {
-      // Retrieve the token from the Authorization header
-      String token = headers.getHeaderString("Authorization");
+        // Kiểm tra xem dữ liệu Aboutme đã tồn tại chưa
+        List<Aboutme> existingAboutmes = repository.getAboutmeByprofileId(profileId);
+        if (!existingAboutmes.isEmpty()) {
+            // Nếu dữ liệu đã tồn tại, trả về lỗi và không thêm mới
+            return Response.status(Response.Status.CONFLICT)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Aboutme data already exists for this profile")
+                                         .build())
+                           .build();
+        }
 
-      // Check if the token is present and valid
-      if (token == null || !isValidToken(token)) {
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Unauthorized access")
-                  .build();
-          return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
-      }
+        // Nếu dữ liệu chưa tồn tại, thêm mới
+        Aboutme createdAboutme = repository.insertAboutme(newAboutme, profileId);
+        if (createdAboutme == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Failed to create a new Aboutme")
+                                         .build())
+                           .build();
+        }
 
-      int profileId = 0;
-      try {
-          profileId = Integer.parseInt(extractIdFromToken(token));
-      } catch (NumberFormatException e) {
-          // Handle the exception, maybe log it and/or set a default value
-          System.out.println("Error parsing profileId: " + e.getMessage());
-          // Depending on your application logic, you might want to throw an exception or handle this case accordingly.
-      }   
-      
-      if (profileId <= 0) {
-        JsonObject jsonError = Json.createObjectBuilder()
-            .add("error", "Invalid token: No profile ID found")
-            .build();
-        return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
-      }
-      
-      Aboutme education = repository.getAboutmeById(aboutmeId, profileId);
-      // Check if the project exists
-      if (education == null) {
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Project with ID " + aboutmeId + " not found")
-                  .build();
-          return Response.status(Response.Status.NOT_FOUND).entity(jsonError).build();
-      }
+        JsonObject projectJson = Json.createObjectBuilder()
+                                    .add("description", createdAboutme.getDescription())
+                                    .add("profiles_id", profileId)
+                                    .add("id", createdAboutme.getId())
+                                    .build();
 
-      // Create the JSON response for the project
-//      JsonObject projectJson = Json.createObjectBuilder()
-//    		  
-//              .add("id", project.getId())
-//              .add("title", project.getTitle())
-//              .add("description", project.getDescription())
-//              .add("start_date", project.getStartDate())
-//              .add("end_date", project.getEndDate())
-//              .build();
-      JsonObject projectJson = Json.createObjectBuilder()
-    	        .add("aboutmeId", education.getDescription())
-    	     
-    	        .add("id", education.getId())
-    	        .build();
+        JsonObject jsonResponse = Json.createObjectBuilder()
+                                       .add("success", true)
+                                       .add("message", "Aboutme created successfully")
+                                       .add("aboutme", projectJson)
+                                       .build();
 
-    	    JsonObject jsonResponse = Json.createObjectBuilder()
-    	        .add("success", true)
-    	        .add("message", "success")
-    	        .add("data", projectJson)
-    	        .add("status_code", 200)
-    	        .build();
+        return Response.status(Response.Status.CREATED).entity(jsonResponse).build();
+    }
 
-      // Return the response with the project details
-      return Response.ok(jsonResponse).build();
-  }
-  
-  @PUT
-  @Path("{aboutmeId}")
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response updateProject(@Context HttpHeaders headers, @PathParam("aboutmeId") int aboutmeId, Aboutme updatedProject) {
-      // Retrieve the token from the Authorization header
-      String token = headers.getHeaderString("Authorization");
 
-      // Check if the token is present and valid
-      if (token == null || !isValidToken(token)) {
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Unauthorized access")
-                  .build();
-          return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
-      }
-      int profileId = 0;
-      try {
-          profileId = Integer.parseInt(extractIdFromToken(token));
-      } catch (NumberFormatException e) {
-          // Handle the exception, maybe log it and/or set a default value
-          System.out.println("Error parsing profileId: " + e.getMessage());
-          // Depending on your application logic, you might want to throw an exception or handle this case accordingly.
-      }   
-      
-      if (profileId <= 0) {
-        JsonObject jsonError = Json.createObjectBuilder()
-            .add("error", "Invalid token: No profile ID found")
-            .build();
-        return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
-      }
+    @PUT
+    @Path("{aboutmeId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updateAboutme(@Context HttpHeaders headers, @PathParam("aboutmeId") int aboutmeId, Aboutme updatedAboutme) {
+        String token = headers.getHeaderString("Authorization");
 
-      // Fetch the project by its ID
-      Aboutme existingEducation = repository.getAboutmeById(aboutmeId, profileId);
+        if (token == null || !isValidToken(token)) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Unauthorized access")
+                                         .build())
+                           .build();
+        }
 
-      // Check if the project exists
-      if (existingEducation == null) {
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Project with ID " + aboutmeId + " not found")
-                  .build();
-          return Response.status(Response.Status.NOT_FOUND).entity(jsonError).build();
-      }
+        int profileId = extractIdFromToken(token);
+        if (profileId <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Invalid token: No profile ID found")
+                                         .build())
+                           .build();
+        }
 
-      // Update the project details
-      existingEducation.setDescription(updatedProject.getDescription());
+        Aboutme existingAboutme = repository.getAboutmeById(aboutmeId, profileId);
+        if (existingAboutme == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Aboutme with ID " + aboutmeId + " not found")
+                                         .build())
+                           .build();
+        }
 
-      // Perform the update in the database
-      boolean success = repository.updateAboutme(existingEducation);
+        existingAboutme.setDescription(updatedAboutme.getDescription());
 
-      if (success) {
-          // Create the JSON response for the updated project
-          JsonObject projectJson = Json.createObjectBuilder()
-        		.add("description", existingEducation.getDescription())
-      	       
-      	        .add("id", existingEducation.getId())
-      	        .build();
+        boolean success = repository.updateAboutme(existingAboutme, profileId);
+        if (success) {
+            return Response.ok(Json.createObjectBuilder()
+                                  .add("success", true)
+                                  .add("message", "Aboutme updated successfully")
+                                  .build())
+                           .build();
+        } else {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Failed to update the Aboutme")
+                                         .build())
+                           .build();
+        }
+    }
 
-          JsonObject jsonResponse = Json.createObjectBuilder()
-                  .add("success", true)
-                  .add("message", "About me updated successfully")
-                  .add("data", projectJson)
-                  .build();
 
-          // Return the response with the updated project details
-          return Response.ok(jsonResponse).build();
-      } else {
-          // Return an internal server error response if the update fails
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Failed to update the project")
-                  .build();
-          return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonError).build();
-      }
-  }
+    @DELETE
+    @Path("{aboutmeId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteAboutme(@Context HttpHeaders headers, @PathParam("aboutmeId") int aboutmeId) {
+        String token = headers.getHeaderString("Authorization");
 
-  @DELETE
-  @Path("{aboutmeId}")
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response deleteProject(@Context HttpHeaders headers, @PathParam("aboutmeId") int aboutmeId) {
-      // Retrieve the token from the Authorization header
-      String token = headers.getHeaderString("Authorization");
+        if (token == null || !isValidToken(token)) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Unauthorized access")
+                                         .build())
+                           .build();
+        }
 
-      // Check if the token is present and valid
-      if (token == null || !isValidToken(token)) {
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Unauthorized access")
-                  .build();
-          return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
-      }
+        int profileId = extractIdFromToken(token);
+        if (profileId <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Invalid token: No profile ID found")
+                                         .build())
+                           .build();
+        }
 
-      // Fetch the project by its ID
-      int profileId = 0;
-      try {
-          profileId = Integer.parseInt(extractIdFromToken(token));
-      } catch (NumberFormatException e) {
-          // Handle the exception, maybe log it and/or set a default value
-          System.out.println("Error parsing profileId: " + e.getMessage());
-          // Depending on your application logic, you might want to throw an exception or handle this case accordingly.
-      }   
-      
-      if (profileId <= 0) {
-        JsonObject jsonError = Json.createObjectBuilder()
-            .add("error", "Invalid token: No Aboutme ID found")
-            .build();
-        return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
-      }
+        Aboutme existingAboutme = repository.getAboutmeById(aboutmeId, profileId);
+        if (existingAboutme == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Aboutme with ID " + aboutmeId + " not found")
+                                         .build())
+                           .build();
+        }
 
-      Aboutme existingEducation = repository.getAboutmeById(aboutmeId, profileId);
+        boolean success = repository.deleteAboutme(aboutmeId);
+        if (success) {
+            return Response.ok(Json.createObjectBuilder()
+                                  .add("success", true)
+                                  .add("message", "Aboutme deleted successfully")
+                                  .build())
+                           .build();
+        } else {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                           .entity(Json.createObjectBuilder()
+                                         .add("error", "Failed to delete the Aboutme")
+                                         .build())
+                           .build();
+        }
+    }
 
-      // Check if the project exists
-      if (existingEducation == null) {
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Project with ID " + aboutmeId + " not found")
-                  .build();
-          return Response.status(Response.Status.NOT_FOUND).entity(jsonError).build();
-      }
+    private int extractIdFromToken(String token) {
+        if (token != null && token.startsWith("Bearer ")) {
+            String tokenString = token.substring(7).trim();
+            try {
+                Jws<Claims> claims = Jwts.parser()
+                                         .setSigningKey("your-secret-key")
+                                         .parseClaimsJws(tokenString);
+                String subject = claims.getBody().getSubject();
+                String[] parts = subject.split("_");
+                return Integer.parseInt(parts[0]);
+            } catch (JwtException e) {
+                e.printStackTrace();
+                return -1;
+            }
+        }
+        return -1;
+    }
 
-      // Perform the deletion in the database
-      boolean success = repository.deleteAboutme(aboutmeId);
-
-      if (success) {
-          // Create the JSON response for the deletion confirmation
-          JsonObject jsonResponse = Json.createObjectBuilder()
-                  .add("success", true)
-                  .add("message", "Aboutme deleted successfully")
-                  .build();
-
-          // Return the response with the deletion confirmation
-          return Response.ok(jsonResponse).build();
-      } else {
-          // Return an internal server error response if the deletion fails
-          JsonObject jsonError = Json.createObjectBuilder()
-                  .add("error", "Failed to delete the Education")
-                  .build();
-          return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonError).build();
-      }
-  }
-  private String extractIdFromToken(String token) {
-      if (token != null && token.startsWith("Bearer ")) {
-          String tokenString = token.substring(7).trim();
-
-          try {
-              Jws<Claims> claims = Jwts.parser()
-                                       .setSigningKey("your-secret-key")
-                                       .parseClaimsJws(tokenString);
-              String subject = claims.getBody().getSubject();
-              // Split the subject to extract ID
-              String[] parts = subject.split("_");
-              return parts[0]; // First part is the ID
-          } catch (JwtException e) {
-              // Handle token parsing exception
-              e.printStackTrace(); // Or log the exception
-              return null; // Return null if unable to extract ID
-          }
-      }
-      return null;
-  }
-
-  private boolean isValidToken(String token) {
-    // Implement your token validation logic here
-    // For demonstration purposes, we'll assume the token is always valid
-    return true;
-  }
-  
+    private boolean isValidToken(String token) {
+        return true; // Implement your token validation logic here
+    }
 }
-
-  
-

@@ -94,12 +94,41 @@ public class AboutmeRepository {
         return aboutme;
     }
     
-    public boolean updateAboutme(Aboutme aboutme) {
-        String sql = "UPDATE public.aboutme SET description = ? WHERE id = ?";
+    public List<Aboutme> getAboutmeByprofileId(int profileId) {
+        List<Aboutme> aboutmes = new ArrayList<>();
+        
+        String sql = "SELECT id, profiles_id, description FROM public.aboutme WHERE profiles_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, profileId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Aboutme aboutme = new Aboutme();
+                    aboutme.setId(rs.getInt("id"));
+                    aboutme.setDescription(rs.getString("description"));
+                    aboutmes.add(aboutme);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error while retrieving aboutme from the database: " + e.getMessage());
+        }
+        
+        return aboutmes;
+    }
+
+    
+    public boolean updateAboutme(Aboutme aboutme, int profileId) {
+        // Kiểm tra xem đối tượng aboutme và profileId có tồn tại không
+        if (aboutme == null || profileId <= 0) {
+            System.out.println("Error: Invalid Aboutme object or Profile ID.");
+            return false;
+        }
+
+        String sql = "UPDATE public.aboutme SET description = ? WHERE id = ? AND profiles_id = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, aboutme.getDescription());
             pstmt.setInt(2, aboutme.getId());
+            pstmt.setInt(3, profileId);
 
             int rowsAffected = pstmt.executeUpdate();
             return rowsAffected > 0;
@@ -108,6 +137,7 @@ public class AboutmeRepository {
             return false;
         }
     }
+
 
     public boolean deleteAboutme(int aboutmeId) {
         String sql = "DELETE FROM public.aboutme WHERE id = ?";

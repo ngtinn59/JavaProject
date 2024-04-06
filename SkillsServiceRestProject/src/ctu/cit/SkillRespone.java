@@ -51,7 +51,7 @@ public class SkillRespone {
             System.out.println("Error parsing profileId: " + e.getMessage());
             // Depending on your application logic, you might want to throw an exception or handle this case accordingly.
             JsonObject jsonError = Json.createObjectBuilder()
-                    .add("error", "Invalid profile ID format in token")
+                    .add("error", "Invalid profile ID format in tokens"+profileId)
                     .build();
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
         }
@@ -396,5 +396,85 @@ public class SkillRespone {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonError).build();
         }
     }
+    
+    @POST
+    @Path("/bulk")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response createOrUpdateSkills(@Context HttpHeaders headers, List<Skill> newSkills) {
+        String token = headers.getHeaderString("Authorization");
+
+        if (token == null || !isValidToken(token)) {
+            JsonObject jsonError = Json.createObjectBuilder()
+                .add("error", "Unauthorized access")
+                .build();
+            return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
+        }
+
+        int profileId = 0;
+        try {
+            profileId = Integer.parseInt(extractIdFromToken(token));
+        } catch (NumberFormatException e) {
+            System.out.println("Error parsing profileId: " + e.getMessage());
+            JsonObject jsonError = Json.createObjectBuilder()
+                .add("error", "Invalid profile ID format in token")
+                .build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
+        }
+
+        if (profileId <= 0) {
+            JsonObject jsonError = Json.createObjectBuilder()
+                .add("error", "Invalid token: No profile ID found")
+                .build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
+        }
+
+        // Kiểm tra xem người dùng đã có kỹ năng hay chưa
+        boolean hasExistingSkills = repository.hasSkills(profileId);
+
+        if (hasExistingSkills) {
+            // Nếu có kỹ năng thì xoá hết trước khi thêm mới
+            boolean deleteSuccess = repository.deleteSkill(profileId);
+
+            if (!deleteSuccess) {
+                JsonObject jsonError = Json.createObjectBuilder()
+                    .add("error", "Failed to delete existing skills")
+                    .build();
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonError).build();
+            }
+        }
+
+        // Thêm kỹ năng mới
+        List<Skill> createdSkills = repository.insertMultipleSkills(newSkills, profileId);
+
+        if (createdSkills == null || createdSkills.isEmpty()) {
+            JsonObject jsonError = Json.createObjectBuilder()
+                .add("error", "Failed to create any new skills")
+                .build();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonError).build();
+        }
+
+        // Tạo một JSON array chứa chi tiết của các kỹ năng đã tạo
+        JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+        for (Skill skill : createdSkills) {
+            JsonObject skillJson = Json.createObjectBuilder()
+                .add("id", skill.getId())
+                .add("name", skill.getName())
+                .add("level", skill.getLevel())
+                .add("profiles_id", skill.getProfilesId())
+                .build();
+            jsonArrayBuilder.add(skillJson);
+        }
+
+        // Tạo đối tượng JSON phản hồi cuối cùng
+        JsonObject jsonResponse = Json.createObjectBuilder()
+            .add("success", true)
+            .add("message", "Skills created or updated successfully")
+            .add("skills", jsonArrayBuilder.build())
+            .build();
+
+        return Response.status(Response.Status.CREATED).entity(jsonResponse).build();
+    }
+
+
 
 }

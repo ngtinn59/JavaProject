@@ -71,30 +71,32 @@ public class UserResponsitory {
         }
     }
 
-   public static void main(String[] args) {
-    // Tạo một đối tượng UserResponsitory
-    UserResponsitory repository = new UserResponsitory();
+    public static void main(String[] args) {
+        // Tạo một đối tượng UserResponsitory
+        UserResponsitory repository = new UserResponsitory();
 
-    // Lấy profile cần cập nhật từ cơ sở dữ liệu
-    Profile existingProfile = repository.getProfileByUserId(1); // Giả sử profile cần cập nhật có id là 1
+        // Lấy profile cần cập nhật từ cơ sở dữ liệu
+        Profile existingProfile = repository.getProfileByUserId(43); // Giả sử profile cần cập nhật có id là 1
 
-    if (existingProfile != null) {
-        // Cập nhật thông tin của profile
-        existingProfile.setName("New Name");
-        existingProfile.setTitle("New Title");
-        existingProfile.setPhone("New Phone");
-        existingProfile.setEmail("newemail@example.com");
-        existingProfile.setImage("new-image-url");
-        existingProfile.setGender(true);
-        existingProfile.setLocation("New Location");
-        existingProfile.setWebsite("New Website");
+        if (existingProfile != null) {
+            // Cập nhật thông tin của profile
+            existingProfile.setName("New Name");
+            existingProfile.setTitle("New Title");
+            existingProfile.setPhone("New Phone");
+            existingProfile.setEmail("newemail@example.com");
+            existingProfile.setImage("new-image-url");
+            existingProfile.setGender(true);
+            existingProfile.setLocation("New Location");
+            existingProfile.setWebsite("New Website");
+            existingProfile.setBirthday("New Birthday"); // Thêm dòng này nếu có cột birthday
 
-        // Gọi hàm updateProfile để cập nhật profile vào cơ sở dữ liệu
-        repository.updateProfile(existingProfile);
-    } else {
-        System.out.println("Không tìm thấy profile cần cập nhật!");
+            // Gọi hàm updateProfile để cập nhật profile vào cơ sở dữ liệu
+            repository.updateProfile(existingProfile);
+        } else {
+            System.out.println("Không tìm thấy profile cần cập nhật!");
+        }
     }
-}
+
 
 
     public User getUserByEmail(String email) {
@@ -165,18 +167,22 @@ public class UserResponsitory {
     }
 
     public void updateProfile(Profile existingProfile) {
-        String sql = "UPDATE profiles SET name = ?, title = ?, phone = ?, email = ?, birthday = ?, image = ?, gender = ?, location = ?, website = ? WHERE id = ?";
+        String sql = "UPDATE public.profiles " +
+                     "SET id=?, users_id=?, name=?, title=?, phone=?, email=?, image=?, gender=?, location=?, website=?, birthday=? " +
+                     "WHERE id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, existingProfile.getName());
-            pstmt.setString(2, existingProfile.getTitle());
-            pstmt.setString(3, existingProfile.getPhone());
-            pstmt.setString(4, existingProfile.getEmail());
-            pstmt.setString(5, existingProfile.getBirthday());
-            pstmt.setString(6, existingProfile.getImage());
-            pstmt.setBoolean(7, existingProfile.getGender());
-            pstmt.setString(8, existingProfile.getLocation());
-            pstmt.setString(9, existingProfile.getWebsite());
-            pstmt.setInt(10, existingProfile.getId());
+            pstmt.setInt(1, existingProfile.getUser().getId());
+            pstmt.setInt(2, existingProfile.getUser().getId()); // Thiết lập cả user_id và id vì không rõ ý nghĩa của id trong profile
+            pstmt.setString(3, existingProfile.getName());
+            pstmt.setString(4, existingProfile.getTitle());
+            pstmt.setString(5, existingProfile.getPhone());
+            pstmt.setString(6, existingProfile.getEmail());
+            pstmt.setString(7, existingProfile.getImage());
+            pstmt.setBoolean(8, existingProfile.getGender());
+            pstmt.setString(9, existingProfile.getLocation());
+            pstmt.setString(10, existingProfile.getWebsite());
+            pstmt.setString(11, existingProfile.getBirthday());
+            pstmt.setInt(12, existingProfile.getId());
 
             int rowsAffected = pstmt.executeUpdate();
             if (rowsAffected > 0) {
@@ -188,6 +194,7 @@ public class UserResponsitory {
             System.out.println("Error updating profile: " + e.getMessage());
         }
     }
+
 
     public Profile getProfileByEmail(String email) {
         String sql = "SELECT * FROM profiles WHERE email = ?";
@@ -243,6 +250,6 @@ public class UserResponsitory {
         return null;
     }
 
-
+    
     
 }

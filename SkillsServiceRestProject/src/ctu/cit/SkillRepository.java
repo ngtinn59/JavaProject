@@ -114,33 +114,85 @@ public class SkillRepository {
         return null;
     }
 
-    public boolean deleteSkill(long skillId) {
-        String sql = "DELETE FROM public.skills WHERE id = ?";
+    public boolean deleteSkill(long profileId) {
+        String sql = "DELETE FROM public.skills WHERE profiles_id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setLong(1, skillId);
+            pstmt.setLong(1, profileId);
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            System.out.println("Error while deleting skill from the database: " + e.getMessage());
+            System.out.println("Error while deleting skills from the database: " + e.getMessage());
             return false;
         }
     }
+
     
     public static void main(String[] args) {
         // Tạo một instance của SkillRepository
         SkillRepository repository = new SkillRepository();
 
-        // Tạo một skill mới và chèn vào cơ sở dữ liệu
-        Skill newSkill = new Skill();
-        newSkill.setName("Java");
-        newSkill.setLevel(2);
-        Skill insertedSkill = repository.insertSkill(newSkill, 1);
+        // ID của người dùng cần xóa kỹ năng
+        long profileIdToDelete = 43; // Thay đổi thành profileId thích hợp
 
-        // Kiểm tra xem việc chèn skill mới thành công hay không
-        if (insertedSkill != null) {
-            System.out.println("Inserted skill ID: " + insertedSkill.getId());
+        // Gọi phương thức deleteSkill và in ra kết quả
+        boolean isDeleted = repository.deleteSkill(profileIdToDelete);
+        if (isDeleted) {
+            System.out.println("Skills for profile with ID " + profileIdToDelete + " have been deleted successfully.");
         } else {
-            System.out.println("Failed to insert skill.");
+            System.out.println("Failed to delete skills for profile with ID " + profileIdToDelete + ".");
         }
     }
+
+
+    public List<Skill> insertMultipleSkills(List<Skill> newSkills, int profileId) {
+        List<Skill> insertedSkills = new ArrayList<>();
+
+        String sql = "INSERT INTO public.skills(name, level, profiles_id) VALUES (?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+            for (Skill skill : newSkills) {
+                pstmt.setString(1, skill.getName());
+                pstmt.setInt(2, skill.getLevel());
+                pstmt.setInt(3, profileId);
+
+                int affectedRows = pstmt.executeUpdate();
+                if (affectedRows == 0) {
+                    System.out.println("Insertion failed for skill: " + skill.getName());
+                    continue; // Skip to the next skill if insertion fails
+                }
+
+                try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        long id = rs.getLong(1);
+                        skill.setId(id);
+                        insertedSkills.add(skill);
+                    } else {
+                        System.out.println("Insertion failed for skill: " + skill.getName() + ", no ID obtained.");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error while inserting skills into the database: " + e.getMessage());
+        }
+
+        return insertedSkills;
+    }
+
+    public boolean hasSkills(int profileId) {
+        String sql = "SELECT COUNT(*) FROM public.skills WHERE profiles_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, profileId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    int count = rs.getInt(1);
+                    return count > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error while checking for skills in the database: " + e.getMessage());
+        }
+        return false;
+    }
+
+	
+
 }
