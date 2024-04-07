@@ -28,7 +28,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
 @Path("/education")
-public class EducationRespone {
+public class EducationService {
   private EducationRepository repository = new EducationRepository();
   
 

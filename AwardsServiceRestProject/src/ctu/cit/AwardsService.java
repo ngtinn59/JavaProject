@@ -26,7 +26,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
 @Path("/awards")
-public class AwardsResponse {
+public class AwardsService {
     private AwardsRepository repository = new AwardsRepository();
 
     @GET

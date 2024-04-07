@@ -17,7 +17,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
 @Path("/users")
-public class UserRespone {
+public class UserService {
 
     private UserResponsitory repository = new UserResponsitory();
 

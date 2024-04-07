@@ -25,7 +25,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
 @Path("/experience")
-public class ExperienceResponse {
+public class ExperienceService {
     private ExperienceRepository repository = new ExperienceRepository();
 
     @GET

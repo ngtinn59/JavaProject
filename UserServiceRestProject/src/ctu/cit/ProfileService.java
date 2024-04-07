@@ -23,7 +23,7 @@ import javax.json.JsonObjectBuilder;
 import javax.json.JsonValue;
 
 @Path("/profiles")
-public class ProfileRespone {
+public class ProfileService {
 
     private UserResponsitory repository = new UserResponsitory();
 

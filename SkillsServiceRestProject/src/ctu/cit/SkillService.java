@@ -26,7 +26,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
 @Path("/skills")
-public class SkillRespone {
+public class SkillService {
     private SkillRepository repository = new SkillRepository();
 
     @GET

@@ -26,7 +26,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
 @Path("/certificates")
-public class CertificatesResponse {
+public class CertificatesService {
     private CertificatesRepository repository = new CertificatesRepository();
 
     @GET
