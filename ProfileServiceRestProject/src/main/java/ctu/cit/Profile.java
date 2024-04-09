@@ -5,6 +5,7 @@ import javax.persistence.*;
 import org.apache.catalina.User;
 
 
+
 @Entity
 @Table(name = "profiles")
 public class Profile {
