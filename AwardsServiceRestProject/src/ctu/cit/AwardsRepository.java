@@ -18,7 +18,7 @@ public class AwardsRepository {
         String password = "123";
         try {
             Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/cse", user_name, password);
+            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/Awards Service", user_name, password);
             System.out.println("Káº¿t ná»‘i thÃ nh cÃ´ng!");
         } catch (Exception e) {
             System.out.println("Káº¿t ná»‘i Ä‘áº¿n cÆ¡ sá»Ÿ dá»¯ liá»‡u tháº¥t báº¡i: " + e.getMessage());

@@ -18,7 +18,7 @@ public class AboutmeRepository {
         String password = "123";
         try {
             Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/cse", user_name, password);
+            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/About Me Service", user_name, password);
             System.out.println("Kết nối thành công!");
         } catch (Exception e) {
             System.out.println("Kết nối đến cơ sở dữ liệu thất bại: " + e.getMessage());
@@ -154,6 +154,50 @@ public class AboutmeRepository {
     // Phương thức khác cũng có thể được thêm vào tùy theo yêu cầu
 
     public static void main(String[] args) {
-        // Code thử nghiệm hoặc gọi các phương thức từ đây
+        AboutmeRepository repository = new AboutmeRepository();
+
+        // Thêm mới một Aboutme
+        Aboutme newAboutme = new Aboutme();
+        newAboutme.setDescription("This is a new Aboutme description.");
+        Aboutme insertedAboutme = repository.insertAboutme(newAboutme, 1); // Thay 1 bằng profilesId thích hợp
+        if (insertedAboutme != null) {
+            System.out.println("Inserted Aboutme: " + insertedAboutme.getId());
+        } else {
+            System.out.println("Failed to insert Aboutme.");
+        }
+
+        // Lấy tất cả Aboutme theo profilesId
+        List<Aboutme> aboutmes = repository.getAllAboutmeByProfileId(1); // Thay 1 bằng profilesId thích hợp
+        System.out.println("Aboutme list:");
+        for (Aboutme aboutme : aboutmes) {
+            System.out.println("ID: " + aboutme.getId() + ", Description: " + aboutme.getDescription());
+        }
+
+        // Lấy một Aboutme theo ID và profilesId
+        Aboutme retrievedAboutme = repository.getAboutmeById(1, 1); // Thay 1 bằng aboutmeId và profilesId thích hợp
+        if (retrievedAboutme != null) {
+            System.out.println("Retrieved Aboutme: ID: " + retrievedAboutme.getId() + ", Description: " + retrievedAboutme.getDescription());
+        } else {
+            System.out.println("Aboutme not found.");
+        }
+
+        // Cập nhật một Aboutme
+        Aboutme aboutmeToUpdate = new Aboutme();
+        aboutmeToUpdate.setId(1); // Thay 1 bằng ID của Aboutme cần cập nhật
+        aboutmeToUpdate.setDescription("Updated description.");
+        boolean updateResult = repository.updateAboutme(aboutmeToUpdate, 1); // Thay 1 bằng profilesId thích hợp
+        if (updateResult) {
+            System.out.println("Aboutme updated successfully.");
+        } else {
+            System.out.println("Failed to update Aboutme.");
+        }
+
+        // Xóa một Aboutme
+        boolean deleteResult = repository.deleteAboutme(1); // Thay 1 bằng ID của Aboutme cần xóa
+        if (deleteResult) {
+            System.out.println("Aboutme deleted successfully.");
+        } else {
+            System.out.println("Failed to delete Aboutme.");
+        }
     }
 }

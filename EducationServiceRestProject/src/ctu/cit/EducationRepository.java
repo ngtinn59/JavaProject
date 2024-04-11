@@ -19,10 +19,10 @@ public class EducationRepository {
         String password = "123";
         try {
             Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/cse", user_name, password);
+            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/Education Service", user_name, password);
             System.out.println("Ket noi thanh cong!");
         } catch (Exception e) {
-            System.out.println("Káº¿t ná»‘i Ä‘áº¿n cÆ¡ sá»Ÿ dá»¯ liá»‡u tháº¥t báº¡i: " + e.getMessage());
+            System.out.println("That bai" + e.getMessage());
         }
     }
 
@@ -162,7 +162,39 @@ public class EducationRepository {
   
     public static void main(String[] args) {
         // Tạo một đối tượng EducationRepository
-        
+        EducationRepository educationRepository = new EducationRepository();
+
+        // Kiểm tra chức năng insertEducation
+        Education newEducation = new Education();
+        newEducation.setDegree("Bachelor");
+        newEducation.setInstitution("ABC University");
+        newEducation.setAdditionalDetail("Some additional details");
+        newEducation.setStartDate("2022-01-01");
+        newEducation.setEndDate("2026-01-01");
+        Education insertedEducation = educationRepository.insertEducation(newEducation, 1);
+        System.out.println("Inserted education ID: " + insertedEducation.getId());
+
+        // Kiểm tra chức năng getAllEducationByProfileId
+        List<Education> educations = educationRepository.getAllEducationByProfileId(1);
+        System.out.println("Educations for profile ID 1:");
+        for (Education education : educations) {
+            System.out.println(education);
+        }
+
+        // Kiểm tra chức năng getEducationById
+        Education retrievedEducation = educationRepository.getEducationById(insertedEducation.getId(), 1);
+        System.out.println("Retrieved education by ID:");
+        System.out.println(retrievedEducation);
+
+        // Kiểm tra chức năng updateEducation
+        retrievedEducation.setDegree("Master");
+        Education updatedEducation = educationRepository.updateEducation(retrievedEducation);
+        System.out.println("Updated education:");
+        System.out.println(updatedEducation);
+
+        // Kiểm tra chức năng deleteEducation
+        boolean deleteResult = educationRepository.deleteEducation(updatedEducation.getId());
+        System.out.println("Delete result: " + deleteResult);
     }
 
 

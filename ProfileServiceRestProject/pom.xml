@@ -31,6 +31,11 @@
     <artifactId>jjwt</artifactId>
     <version>0.9.1</version>
 </dependency>
-	
-  </dependencies>
+
+	<dependency>
+		<groupId>UserServiceRestProject</groupId>
+		<artifactId>UserServiceRestProject</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</dependency>
+   </dependencies>
 </project>

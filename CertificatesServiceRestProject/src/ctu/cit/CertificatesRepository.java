@@ -18,7 +18,7 @@ public class CertificatesRepository {
         String password = "123";
         try {
             Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/cse", user_name, password);
+            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/Certificates", user_name, password);
             System.out.println("Kết nối thành công!");
         } catch (Exception e) {
             System.out.println("Kết nối đến cơ sở dữ liệu thất bại: " + e.getMessage());
@@ -140,6 +140,30 @@ public class CertificatesRepository {
     // Other methods can be added as needed
 
     public static void main(String[] args) {
-        // Experimentation code or calling methods from here
+        // Tạo một đối tượng CertificatesRepository để thực hiện thao tác với cơ sở dữ liệu
+        CertificatesRepository certificatesRepository = new CertificatesRepository();
+        
+        // Tạo một đối tượng Certificate mới để chèn vào cơ sở dữ liệu
+        Certificate certificate = new Certificate();
+        certificate.setTitle("Java Programming");
+        certificate.setProvider("Oracle");
+        certificate.setIssueDate("2024-04-10");
+        certificate.setDescription("Certificate for completing a Java programming course.");
+        certificate.setCertificateUrl("https://example.com/certificate/java");
+
+        // ID của profile mà chứng chỉ này thuộc về
+        int profilesId = 1; // Ví dụ: Profile ID là 1
+        
+        // Gọi hàm insertCertificate để chèn chứng chỉ vào cơ sở dữ liệu
+        Certificate insertedCertificate = certificatesRepository.insertCertificate(certificate, profilesId);
+        
+        // Kiểm tra xem việc chèn chứng chỉ vào cơ sở dữ liệu có thành công hay không
+        if (insertedCertificate != null) {
+            System.out.println("Chứng chỉ đã được chèn vào cơ sở dữ liệu với ID: " + insertedCertificate.getId());
+        } else {
+            System.out.println("Không thể chèn chứng chỉ vào cơ sở dữ liệu.");
+        }
     }
+
+
 }

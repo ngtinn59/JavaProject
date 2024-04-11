@@ -1,6 +1,8 @@
 package ctu.cit;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -19,6 +21,7 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;
@@ -27,7 +30,24 @@ import io.jsonwebtoken.Jwts;
 @Path("/aboutme")
 public class AboutmeService {
 
+    // Sử dụng ConcurrentHashMap để lưu trữ dữ liệu cache với key là profileId và value là danh sách Aboutme
+    private ConcurrentMap<Integer, List<Aboutme>> cache = new ConcurrentHashMap<>();
     private AboutmeRepository repository = new AboutmeRepository();
+    public static class Cache {
+        private static ConcurrentMap<Integer, List<Aboutme>> cache = new ConcurrentHashMap<>();
+
+        public static List<Aboutme> get(int profileId) {
+            return cache.get(profileId);
+        }
+
+        public static void put(int profileId, List<Aboutme> aboutmes) {
+            cache.put(profileId, aboutmes);
+        }
+
+        public static void invalidate(int profileId) {
+            cache.remove(profileId);
+        }
+    }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -51,19 +71,43 @@ public class AboutmeService {
                            .build();
         }
 
-        JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
-        repository.getAllAboutmeByProfileId(profileId)
-                  .forEach(aboutme -> jsonArrayBuilder.add(Json.createObjectBuilder()
+        // Kiểm tra cache trước khi truy vấn CSDL
+        List<Aboutme> cachedAboutmes = Cache.get(profileId); // Sử dụng lớp Cache cục bộ
+        if (cachedAboutmes != null) {
+            JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+            cachedAboutmes.forEach(aboutme -> jsonArrayBuilder.add(Json.createObjectBuilder()
                                                            .add("id", aboutme.getId())
                                                            .add("description", aboutme.getDescription())));
-        
-        JsonObject jsonResponse = Json.createObjectBuilder()
+
+            JsonObject jsonResponse = Json.createObjectBuilder()
                                        .add("success", true)
                                        .add("data", jsonArrayBuilder.build())
+                                       .add("cached", true) // Thêm thông tin này để chỉ ra rằng dữ liệu được lấy từ cache
                                        .build();
 
-        return Response.ok(jsonResponse).build();
+            return Response.ok(jsonResponse).build();
+        } else {
+            // Nếu không có trong cache, truy vấn CSDL
+            List<Aboutme> aboutmes = repository.getAllAboutmeByProfileId(profileId);
+            // Lưu vào cache
+            Cache.put(profileId, aboutmes);
+
+            JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+            aboutmes.forEach(aboutme -> jsonArrayBuilder.add(Json.createObjectBuilder()
+                                                           .add("id", aboutme.getId())
+                                                           .add("description", aboutme.getDescription())));
+
+            JsonObject jsonResponse = Json.createObjectBuilder()
+                                       .add("success", true)
+                                       .add("data", jsonArrayBuilder.build()) // Chỉnh sửa thành "data" thay vì "datas"
+                                       .add("cached", false) // Thêm thông tin này để chỉ ra rằng dữ liệu không được lấy từ cache
+                                       .build();
+
+            return Response.ok(jsonResponse).build();
+        }
     }
+
+    // Các phương thức khác không thay đổi
 
 //    @POST
 //    @Consumes(MediaType.APPLICATION_JSON)
@@ -242,7 +286,7 @@ public class AboutmeService {
     
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response createAboutme(@Context HttpHeaders headers, Aboutme newAboutme) {
+    public Response createOrUpdateAboutme(@Context HttpHeaders headers, Aboutme newAboutme) {
         String token = headers.getHeaderString("Authorization");
 
         if (token == null || !isValidToken(token)) {
@@ -262,18 +306,14 @@ public class AboutmeService {
                            .build();
         }
 
-        // Kiểm tra xem dữ liệu Aboutme đã tồn tại chưa
-        List<Aboutme> existingAboutmes = repository.getAboutmeByprofileId(profileId);
-        if (!existingAboutmes.isEmpty()) {
-            // Nếu dữ liệu đã tồn tại, trả về lỗi và không thêm mới
-            return Response.status(Response.Status.CONFLICT)
-                           .entity(Json.createObjectBuilder()
-                                         .add("error", "Aboutme data already exists for this profile")
-                                         .build())
-                           .build();
+        // Kiểm tra cache trước khi truy vấn CSDL
+        List<Aboutme> cachedAboutmes = Cache.get(profileId);
+        if (cachedAboutmes != null) {
+            // Nếu có trong cache, invalid cache trước khi thêm mới
+            Cache.invalidate(profileId);
         }
 
-        // Nếu dữ liệu chưa tồn tại, thêm mới
+        // Thêm mới dữ liệu vào CSDL
         Aboutme createdAboutme = repository.insertAboutme(newAboutme, profileId);
         if (createdAboutme == null) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -282,6 +322,10 @@ public class AboutmeService {
                                          .build())
                            .build();
         }
+
+        // Lưu dữ liệu mới vào cache
+        List<Aboutme> aboutmes = repository.getAllAboutmeByProfileId(profileId);
+        Cache.put(profileId, aboutmes);
 
         JsonObject projectJson = Json.createObjectBuilder()
                                     .add("description", createdAboutme.getDescription())
@@ -323,6 +367,14 @@ public class AboutmeService {
                            .build();
         }
 
+        // Kiểm tra cache trước khi cập nhật dữ liệu
+        List<Aboutme> cachedAboutmes = Cache.get(profileId);
+        if (cachedAboutmes != null) {
+            // Nếu có trong cache, invalid cache trước khi cập nhật
+            Cache.invalidate(profileId);
+        }
+
+        // Cập nhật dữ liệu trong CSDL
         Aboutme existingAboutme = repository.getAboutmeById(aboutmeId, profileId);
         if (existingAboutme == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -336,6 +388,10 @@ public class AboutmeService {
 
         boolean success = repository.updateAboutme(existingAboutme, profileId);
         if (success) {
+            // Sau khi cập nhật thành công, lấy dữ liệu mới từ CSDL và cập nhật vào cache
+            List<Aboutme> aboutmes = repository.getAllAboutmeByProfileId(profileId);
+            Cache.put(profileId, aboutmes);
+
             return Response.ok(Json.createObjectBuilder()
                                   .add("success", true)
                                   .add("message", "Aboutme updated successfully")
@@ -349,6 +405,7 @@ public class AboutmeService {
                            .build();
         }
     }
+
 
 
     @DELETE
@@ -420,4 +477,7 @@ public class AboutmeService {
     private boolean isValidToken(String token) {
         return true; // Implement your token validation logic here
     }
+    
+   
+
 }

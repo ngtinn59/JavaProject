@@ -1,8 +1,10 @@
 package ctu.cit;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
@@ -70,7 +72,7 @@ public class ProfileRespone {
                 .add("email", existingProfile.getEmail() != null ? existingProfile.getEmail() : "")
 
                 .add("image_url", existingProfile.getImage() != null ? existingProfile.getImage() : "")
-                .add("gender", existingProfile.getGender() ? "Female" : "Male") // Chuyển đổi giới tính thành chuỗi Female hoặc Male
+                .add("gender", existingProfile.getGender() ? "Female" : "Male") // Chuyá»ƒn Ä‘á»•i giá»›i tÃ­nh thÃ nh chuá»—i Female hoáº·c Male
                 .add("location", existingProfile.getLocation() != null ? existingProfile.getLocation() : "")
                 .add("website", existingProfile.getWebsite() != null ? existingProfile.getWebsite(): "")
                 .add("birthday", existingProfile.getBirthday() != null ? existingProfile.getBirthday() : "")
@@ -135,32 +137,100 @@ public class ProfileRespone {
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
+    public Response insertProfile(@Context HttpHeaders headers, Profile insertProfile) {
+      String token = headers.getHeaderString("Authorization");
+
+      if (token == null || token.isEmpty()) {
+        JsonObject jsonError = Json.createObjectBuilder()
+          .add("error", "Token is missing")
+          .build();
+        return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
+      }
+
+      int profileId = extractProfileIdFromToken(token);
+
+      if (profileId <= 0) {
+        JsonObject jsonError = Json.createObjectBuilder()
+          .add("error", "Invalid token: No profile ID found")
+          .build();
+        return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
+      }
+
+      // Check if a profile with the given ID already exists
+      Profile existingProfile = repository.getProfileById(profileId);
+      if (existingProfile != null) {
+        // If profile exists, respond with an error
+        JsonObject jsonError = Json.createObjectBuilder()
+          .add("error", "Profile already exists with ID: " + profileId)
+          .build();
+        return Response.status(Response.Status.CONFLICT).entity(jsonError).build();
+      }
+
+      // If the profile does not exist, create a new one
+      Profile newProfile = new Profile();
+      newProfile.setUsers_id((long) profileId);
+      newProfile.setName(insertProfile.getName());
+      newProfile.setTitle(insertProfile.getTitle());
+      newProfile.setPhone(insertProfile.getPhone());
+      newProfile.setEmail(insertProfile.getEmail());
+      newProfile.setImage(insertProfile.getImage());
+      newProfile.setGender(insertProfile.getGender());
+      newProfile.setLocation(insertProfile.getLocation());
+      newProfile.setWebsite(insertProfile.getWebsite());
+      newProfile.setBirthday(insertProfile.getBirthday());
+
+      // Save the new profile information into the database
+      repository.insertProfile(newProfile);
+
+      // Create a success response with the new profile information
+      JsonObject jsonResponse = Json.createObjectBuilder()
+          .add("message", "Profile created successfully")
+          .add("profile", Json.createObjectBuilder()
+              .add("id", newProfile.getUsers_id())
+              .add("name", newProfile.getName())
+              .add("title", newProfile.getTitle())
+              .add("phone", newProfile.getPhone())
+              .add("email", newProfile.getEmail())
+              .add("gender", newProfile.getGender())
+              .add("location", newProfile.getLocation())
+              .add("website", newProfile.getWebsite())
+              .add("birthday", newProfile.getBirthday()))
+          .build();
+
+      return Response.status(Response.Status.CREATED).entity(jsonResponse).build();
+    }  
+    
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response updateProfile(@Context HttpHeaders headers, Profile updatedProfile) {
         String token = headers.getHeaderString("Authorization");
 
         if (token == null || token.isEmpty()) {
             JsonObject jsonError = Json.createObjectBuilder()
-                .add("error", "Token is missing")
-                .build();
+                    .add("error", "Token is missing")
+                    .build();
             return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
         }
-        
+
         int profileId = extractProfileIdFromToken(token);
+
         if (profileId <= 0) {
             JsonObject jsonError = Json.createObjectBuilder()
-                .add("error", "Invalid token: No profile ID found")
-                .build();
+                    .add("error", "Invalid token: No profile ID found")
+                    .build();
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
         }
 
+        // Check if the profile to be updated exists
         Profile existingProfile = repository.getProfileById(profileId);
         if (existingProfile == null) {
             JsonObject jsonError = Json.createObjectBuilder()
-                .add("error", "Profile not found for ID: " + profileId)
-                .build();
+                    .add("error", "Profile not found for ID: " + profileId)
+                    .build();
             return Response.status(Response.Status.NOT_FOUND).entity(jsonError).build();
         }
 
+        // Update the profile information with the provided data
         existingProfile.setName(updatedProfile.getName());
         existingProfile.setTitle(updatedProfile.getTitle());
         existingProfile.setPhone(updatedProfile.getPhone());
@@ -171,8 +241,10 @@ public class ProfileRespone {
         existingProfile.setWebsite(updatedProfile.getWebsite());
         existingProfile.setBirthday(updatedProfile.getBirthday());
 
+        // Save the updated profile information into the database
         repository.updateProfile(existingProfile);
 
+        // Create a success response with the updated profile information
         JsonObject jsonResponse = Json.createObjectBuilder()
                 .add("message", "Profile updated successfully")
                 .add("profile", Json.createObjectBuilder()
@@ -187,10 +259,49 @@ public class ProfileRespone {
                         .add("birthday", existingProfile.getBirthday()))
                 .build();
 
-        return Response.ok().entity(jsonResponse).build();
+        return Response.ok(jsonResponse).build();
     }
     
-    
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteProfile(@Context HttpHeaders headers) {
+        String token = headers.getHeaderString("Authorization");
+
+        if (token == null || token.isEmpty()) {
+            JsonObject jsonError = Json.createObjectBuilder()
+                    .add("error", "Token is missing")
+                    .build();
+            return Response.status(Response.Status.UNAUTHORIZED).entity(jsonError).build();
+        }
+
+        int profileId = extractProfileIdFromToken(token);
+
+        if (profileId <= 0) {
+            JsonObject jsonError = Json.createObjectBuilder()
+                    .add("error", "Invalid token: No profile ID found")
+                    .build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonError).build();
+        }
+
+        // Check if the profile to be deleted exists
+        Profile existingProfile = repository.getProfileById(profileId);
+        if (existingProfile == null) {
+            JsonObject jsonError = Json.createObjectBuilder()
+                    .add("error", "Profile not found for ID: " + profileId)
+                    .build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonError).build();
+        }
+
+        // Delete the profile from the database
+        repository.deleteProfile(existingProfile);
+
+        // Create a success response
+        JsonObject jsonResponse = Json.createObjectBuilder()
+                .add("message", "Profile deleted successfully")
+                .build();
+
+        return Response.ok(jsonResponse).build();
+    }
     
     private int extractProfileIdFromToken(String token) {
         if (token != null && token.startsWith("Bearer ")) {

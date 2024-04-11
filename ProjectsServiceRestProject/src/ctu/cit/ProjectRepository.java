@@ -17,7 +17,7 @@ public class ProjectRepository {
         String password = "123";
         try {
             Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/cse", user_name, password);
+            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/Projects Service", user_name, password);
             System.out.println("Ket noi thanh cong!");
         } catch (Exception e) {
             System.out.println("Kết nối đến cơ sở dữ liệu thất bại: " + e.getMessage());

@@ -2,7 +2,6 @@ package ctu.cit;
 
 import javax.persistence.*;
 
-import org.apache.catalina.User;
 
 
 
@@ -28,7 +27,8 @@ public class Profile {
 
     @Column(length = 50)
     private String email;
-
+    
+    private Long users_id;
 
     @Lob
     private String birthday;
@@ -41,10 +41,6 @@ public class Profile {
 
     @Column(length = 100)
     private String website;
-
-    @ManyToOne
-    @JoinColumn(name = "users_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private User user;
 
 	public Long getId() {
 		return id;
@@ -94,6 +90,14 @@ public class Profile {
 		this.email = email;
 	}
 
+	public Long getUsers_id() {
+		return users_id;
+	}
+
+	public void setUsers_id(Long users_id) {
+		this.users_id = users_id;
+	}
+
 	public String getBirthday() {
 		return birthday;
 	}
@@ -134,16 +138,8 @@ public class Profile {
 		this.website = website;
 	}
 
-	public User getUser() {
-		return user;
-	}
-
-	public void setUser(User user) {
-		this.user = user;
-	}
-
-	public Profile(Long id, Long usersId, String name, String title, String phone, String email, String birthday,
-			String image, Boolean gender, String location, String website, User user) {
+	public Profile(Long id, Long usersId, String name, String title, String phone, String email, Long users_id,
+			String birthday, String image, Boolean gender, String location, String website) {
 		super();
 		this.id = id;
 		this.usersId = usersId;
@@ -151,12 +147,12 @@ public class Profile {
 		this.title = title;
 		this.phone = phone;
 		this.email = email;
+		this.users_id = users_id;
 		this.birthday = birthday;
 		this.image = image;
 		this.gender = gender;
 		this.location = location;
 		this.website = website;
-		this.user = user;
 	}
 
 	public Profile() {
@@ -164,10 +160,9 @@ public class Profile {
 		// TODO Auto-generated constructor stub
 	}
 
-	public void setUserId(int i) {
-	    this.usersId = (long) i;
-	}
 
+
+	
 
     
     
